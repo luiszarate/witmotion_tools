@@ -66,6 +66,35 @@ if ! sudo -u "$SERVICE_USER" "$PREFIX/venv/bin/wtvb01-logger" \
   echo
 fi
 
+# The unit hides /home from the service (ProtectHome=yes). Writing CSVs there
+# needs the directory exposed back in, and owned so the service can write and
+# you can read. A drop-in keeps the shipped unit generic.
+output_dir="$(grep -oP '(?<=^output_dir = ")[^"]+' "$CONFIG_DIR/config.toml" 2>/dev/null || true)"
+dropin_dir="/etc/systemd/system/$UNIT.d"
+dropin="$dropin_dir/output-home.conf"
+if [[ "$output_dir" == /home/* ]]; then
+  echo "==> los CSV van a $output_dir (dentro de /home): exponiéndolo al servicio"
+  mkdir -p "$output_dir"
+  # Propietario el servicio, grupo el tuyo, setgid para que puedas leer lo escrito.
+  chown "$SERVICE_USER":"${SUDO_USER:-$SERVICE_USER}" "$output_dir"
+  chmod 2775 "$output_dir"
+  mkdir -p "$dropin_dir"
+  cat > "$dropin" <<DROPIN
+# Generado por install.sh porque output_dir está dentro de /home.
+# ProtectHome=tmpfs oculta /home entero; BindPaths vuelve a exponer solo el
+# directorio de logs, así el servicio no ve el resto de tu home.
+[Service]
+ProtectHome=tmpfs
+BindPaths=$output_dir
+DROPIN
+  systemctl daemon-reload
+elif [[ -f "$dropin" ]]; then
+  echo "==> output_dir ya no está en /home: retirando el drop-in"
+  rm -f "$dropin"
+  rmdir --ignore-fail-on-non-empty "$dropin_dir" 2>/dev/null || true
+  systemctl daemon-reload
+fi
+
 socket_in_config="$(grep -oP '(?<=^control_socket = ")[^"]+' "$CONFIG_DIR/config.toml" 2>/dev/null || true)"
 if [[ -n "$socket_in_config" && "$socket_in_config" != /run/wtvb01-logger/* ]]; then
   cat <<WARN

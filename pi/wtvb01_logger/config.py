@@ -242,6 +242,26 @@ def parse(document: Mapping[str, Any]) -> LoggerConfig:
     )
 
 
+def _encoding_error(path: Path, raw: bytes, exc: UnicodeDecodeError) -> str:
+    """Point at the offending byte, with the line it sits on.
+
+    TOML is UTF-8 by definition, and the usual cause of a stray byte is an
+    editor or keyboard layout inserting one - an unfinished dead-key accent,
+    say. Naming the line beats reporting a syntax error that is not there.
+    """
+    line_number = raw.count(b"\n", 0, exc.start) + 1
+    start = raw.rfind(b"\n", 0, exc.start) + 1
+    end = raw.find(b"\n", exc.start)
+    line = raw[start:end if end != -1 else len(raw)].decode("utf-8", errors="replace")
+    return (
+        f"{path} is not UTF-8 text: byte 0x{raw[exc.start]:02X} at position "
+        f"{exc.start}, on line {line_number}:\n"
+        f"    {line}\n"
+        f"  The file must be UTF-8. That byte is usually a stray character from "
+        f"an editor or an unfinished dead-key accent; delete it and save again."
+    )
+
+
 def load(path: Path | str) -> LoggerConfig:
     """Read and validate a config file."""
     if tomllib is None:  # pragma: no cover
@@ -252,7 +272,11 @@ def load(path: Path | str) -> LoggerConfig:
     except OSError as exc:
         raise ConfigError(f"cannot read {path}: {exc}") from exc
     try:
-        document = tomllib.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ConfigError(_encoding_error(path, raw, exc)) from exc
+    try:
+        document = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
         raise ConfigError(f"{path} is not valid TOML: {exc}") from exc
     return parse(document)

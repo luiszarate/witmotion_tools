@@ -70,11 +70,16 @@ class LoggerService:
     # --- actions -------------------------------------------------------------
 
     def roll(self, sensor: str | None = None) -> list[str]:
-        """Start a fresh file for one sensor, or for all of them."""
+        """Start a fresh file for one sensor, or for all of them.
+
+        Sensors that are not attached are skipped: rolling them would only
+        create empty files that nothing is going to write to.
+        """
         rolled = []
         for worker in self._select(sensor):
-            worker.sink.roll()
-            rolled.append(worker.name)
+            if worker.running:
+                worker.sink.roll()
+                rolled.append(worker.name)
         return rolled
 
     def pause(self, sensor: str | None = None) -> list[str]:

@@ -248,6 +248,39 @@ ssh pi-zero wtvb01-logger roll --sensor rotor-izq
 `systemctl reload wtvb01-logger` hace un `roll` completo por SIGHUP, por si el
 socket no está a mano.
 
+### Guardar los CSV en tu carpeta personal
+
+Por defecto van a `/var/lib/wtvb01-logger`, que systemd crea y entrega al
+servicio. Si prefieres tenerlos en tu home, pon la ruta en la configuración:
+
+```toml
+[logger]
+output_dir = "/home/imago/wtvb01-logs"
+```
+
+y vuelve a ejecutar `sudo ./install.sh`. El instalador detecta que la ruta
+está en `/home`, crea el directorio con los permisos correctos y genera un
+*drop-in* de systemd que lo expone al servicio.
+
+Hace falta porque la unidad usa `ProtectHome=yes`, que oculta `/home` entero
+al servicio. El drop-in lo cambia por `ProtectHome=tmpfs` más un `BindPaths`
+del directorio de logs: el servicio ve **solo** esa carpeta y nada más de tu
+home. El directorio queda como `wtvb01:<tu usuario>` con setgid, así el
+servicio escribe y tú lees.
+
+A mano sería:
+
+```bash
+sudo mkdir -p /home/imago/wtvb01-logs && sudo chown wtvb01:imago /home/imago/wtvb01-logs && sudo chmod 2775 /home/imago/wtvb01-logs
+```
+
+```bash
+sudo systemctl edit wtvb01-logger
+```
+
+y añadir `ProtectHome=tmpfs` y `BindPaths=/home/imago/wtvb01-logs` bajo
+`[Service]`.
+
 ### Traerte los datos
 
 ```bash
@@ -273,6 +306,22 @@ cortes caen a las 10:22, 10:37 y así, no a las 10:15 y 10:30.
 
 Una reconexión automática tras una caída del enlace **no** abre archivo nuevo;
 sigue en el mismo, con un hueco en las marcas de tiempo.
+
+### Si no hay ningún sensor
+
+No se crea ningún archivo. Ni siquiera vacío: el archivo se abre con la
+primera muestra que llega, no al arrancar. Un sensor apagado o fuera de
+alcance deja el servicio reintentando con espera creciente (de
+`reconnect_seconds` hasta seis veces ese valor) y `status` lo muestra como
+`SIN CONEXIÓN`.
+
+En cuanto el sensor aparece, el siguiente reintento conecta y **empieza a
+grabar solo**, sin que tengas que hacer nada. La espera es como mucho el techo
+del backoff —30 s con los valores por defecto— más lo que tarde el escaneo
+BLE, unos 12 s. Cuenta con hasta ~45 s desde que enciendes el sensor hasta la
+primera fila.
+
+`roll` no crea archivos para sensores que no están conectados.
 
 ## 8. Cuánto ocupa
 
@@ -353,10 +402,20 @@ id -nG | tr ' ' '\n' | grep wtvb01 || sudo usermod -aG wtvb01 "$USER"
 ### El servicio no arranca
 
 ```bash
-journalctl -u wtvb01-logger -n 50 --no-pager
+sudo journalctl -u wtvb01-logger -n 50 --no-pager
 ```
 
 Casi siempre es la configuración. Comprobarla con `validate`.
+
+Dos causas vistas en la práctica:
+
+**`is not UTF-8 text: byte 0xC3 ...`** — se coló un byte suelto al editar,
+normalmente una tilde muerta del teclado que no llegó a componerse con la
+letra siguiente. El mensaje dice la línea; borra ese carácter y guarda.
+
+**`output_dir` en `/home` sin el drop-in** — el servicio no puede escribir
+ahí porque `ProtectHome=yes` oculta `/home`. Ver
+[§6](#guardar-los-csv-en-tu-carpeta-personal).
 
 ---
 

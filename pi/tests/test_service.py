@@ -232,3 +232,11 @@ class IdleStartTest(_Harness, unittest.TestCase):
 
         self.assertEqual(self._send("connect")["connected"], ["rotor"])
         self.assertTrue(_wait_until(lambda: self._send("status")["sensors"][0]["connected"]))
+
+
+class RollScopeTest(_Harness, unittest.TestCase):
+    def test_roll_skips_sensors_that_are_not_attached(self):
+        # Rolling a released sensor would create a file nothing writes to.
+        self._start()
+        self._send("disconnect")
+        self.assertEqual(self._send("roll")["rolled"], [])

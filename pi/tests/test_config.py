@@ -172,3 +172,35 @@ class BleScanErrorTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("no se pudo escanear", stderr.getvalue())
         self.assertIn("rfkill unblock bluetooth", stderr.getvalue())
+
+
+class EncodingErrorTest(unittest.TestCase):
+    """A stray byte is an encoding fault, not a syntax fault."""
+
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._dir.cleanup)
+        self.path = Path(self._dir.name) / "config.toml"
+
+    def test_reports_the_byte_and_the_line_it_is_on(self):
+        # 0xC3 alone is how an unfinished dead-key accent lands in a file.
+        self.path.write_bytes(
+            b'[logger]\nrotate_minutes = 5\noutput_dir = "\xc3~/logs"\n'
+        )
+        with self.assertRaises(cfg.ConfigError) as caught:
+            cfg.load(self.path)
+        message = str(caught.exception)
+        self.assertIn("not UTF-8", message)
+        self.assertIn("0xC3", message)
+        self.assertIn("line 3", message)
+        # The old message blamed TOML syntax, which sent you hunting for a
+        # missing bracket that was never there.
+        self.assertNotIn("not valid TOML", message)
+
+    def test_valid_utf8_with_accents_is_fine(self):
+        self.path.write_text(
+            '# configuración con acentos\n'
+            '[[sensors]]\nname = "a"\ntransport = "serial"\nport = "/dev/ttyUSB0"\n',
+            encoding="utf-8",
+        )
+        self.assertEqual(len(cfg.load(self.path).sensors), 1)
