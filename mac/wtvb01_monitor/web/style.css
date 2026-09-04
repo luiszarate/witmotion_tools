@@ -1,0 +1,163 @@
+:root {
+  --bg: #10131a;
+  --panel: #171b24;
+  --panel-2: #1e2430;
+  --line: #2a3240;
+  --text: #e6eaf2;
+  --muted: #8b95a7;
+  --accent: #4aa3ff;
+  --x: #ff6b6b;
+  --y: #4ade80;
+  --z: #4aa3ff;
+  --warn: #f5a524;
+  --ok: #4ade80;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: .2px; }
+.sub { color: var(--muted); font-size: 12px; }
+
+.dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--muted); align-self: center;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.04);
+}
+.dot.live { background: var(--ok); animation: pulse 1.6s ease-in-out infinite; }
+.dot.error { background: var(--x); }
+@keyframes pulse { 50% { opacity: .35; } }
+
+.controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+button, select {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+button:hover:not(:disabled), select:hover { border-color: #3a4557; }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #07131f; font-weight: 600; }
+button.primary.on { background: var(--panel-2); border-color: var(--line); color: var(--text); font-weight: 400; }
+button.record.on { background: var(--x); border-color: var(--x); color: #1a0808; font-weight: 600; }
+button.ghost { padding: 6px 9px; }
+.window, .field { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.field input[type="number"] {
+  width: 62px; font: inherit; color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px;
+}
+.field .suffix { font-size: 11px; }
+.field.off { opacity: .4; pointer-events: none; }
+
+.modeHint { margin: 0; padding: 6px 16px; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--line); }
+.modeHint:empty { display: none; }
+
+.notice {
+  margin: 0; padding: 8px 16px;
+  background: rgba(245,165,36,.12);
+  border-bottom: 1px solid rgba(245,165,36,.3);
+  color: var(--warn);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 14px 16px 4px;
+}
+
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.tile .name { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+.tile .value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tile .value small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+.tile .axes { display: flex; gap: 10px; margin-top: 4px; font-variant-numeric: tabular-nums; font-size: 11px; }
+.tile .axes span.x { color: var(--x); }
+.tile .axes span.y { color: var(--y); }
+.tile .axes span.z { color: var(--z); }
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 12px;
+  padding: 10px 16px 16px;
+}
+
+.chart {
+  margin: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px 6px;
+}
+.chart[hidden] { display: none; }
+.chart figcaption {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; margin-bottom: 6px;
+}
+.chart .unit { color: var(--muted); font-weight: 400; }
+.chart .legend { margin-left: auto; display: flex; gap: 10px; font-weight: 400; font-size: 11px; }
+.chart canvas { width: 100%; height: 150px; display: block; }
+
+.panel { margin: 0 16px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.panel summary { padding: 10px 12px; cursor: pointer; color: var(--muted); }
+.panelBody { padding: 0 12px 12px; }
+.panelBody .warn { color: var(--warn); font-size: 11px; margin: 0 0 10px; }
+
+.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.setting { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.setting .name { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.setting .note { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.setting .row { display: flex; gap: 6px; margin-top: 6px; }
+.setting input, .setting select { flex: 1; min-width: 0; }
+
+/* Badges for what the current capture mode does to this group. */
+.chart.stale figcaption::after,
+.chart.aliased figcaption::after {
+  margin-left: 8px; padding: 1px 6px; border-radius: 999px;
+  background: rgba(245,165,36,.15); color: var(--warn);
+  font-size: 10px; font-weight: 400; text-transform: uppercase; letter-spacing: .4px;
+}
+/* Not refreshed at all in this mode. */
+.chart.stale figcaption::after { content: "congelado"; }
+.chart.stale canvas { opacity: .45; }
+/* Refreshed, but far slower than the signal - switch to alta velocidad. */
+.chart.aliased figcaption::after { content: "submuestreado"; }
+.chart.aliased canvas { opacity: .7; }
+.raw table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.raw td { padding: 4px 12px; border-top: 1px solid var(--line); }
+.raw td.addr { color: var(--muted); width: 70px; font-family: ui-monospace, SFMono-Regular, monospace; }
+.raw td.label { color: var(--muted); }
+.raw td.num { text-align: right; }
+
+.foot { position: static; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); border-bottom: none; }

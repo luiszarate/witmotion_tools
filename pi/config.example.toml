@@ -1,0 +1,63 @@
+# Configuración del logger WTVB01-BT50 para Raspberry Pi.
+# Copiar a /etc/wtvb01-logger/config.toml y ajustar.
+#
+# Comprobar con:  wtvb01-logger -c <archivo> validate
+
+[logger]
+# Cada sensor escribe en su propio subdirectorio: <output_dir>/<nombre>/
+output_dir = "/var/lib/wtvb01-logger"
+
+# Un archivo nuevo por sensor cada N minutos. Acota lo que se pierde en un
+# corte de corriente y hace fácil localizar un tramo por hora.
+rotate_minutes = 15
+
+# Cada cuánto se fuerza el volcado a disco. Más bajo pierde menos ante un
+# corte; más alto castiga menos la tarjeta SD.
+flush_seconds = 2
+
+# Socket de control. Es lo que usan 'wtvb01-logger roll|pause|stop' por SSH.
+control_socket = "/run/wtvb01-logger/control.sock"
+
+# false = el servicio arranca inactivo: responde a los comandos pero no toca
+# ningún sensor hasta que hagas 'wtvb01-logger connect'. Así los sensores
+# quedan libres para otros usos.
+#
+# Ponlo en true para operación desatendida, cuando el logger deba grabar solo
+# tras un corte de corriente sin nadie que lo arranque.
+connect_on_start = false
+
+
+# Valores aplicados a todos los sensores salvo que uno los sobrescriba.
+[defaults]
+mode = "normal"           # normal | high_speed | stream
+reconnect_seconds = 5     # espera tras un fallo de conexión (crece con backoff)
+stall_seconds = 20        # rehace el enlace si no llega ninguna trama en este tiempo
+max_rate_hz = 0           # 0 = registrar cada muestra (~100 filas/s ≈ 90 MB/h)
+
+
+# --- Sensores ---------------------------------------------------------------
+# Uno por bloque [[sensors]]. 'name' se usa como nombre de carpeta y de
+# archivo, así que sin espacios ni barras.
+
+# Sensor por cable. Averiguar el puerto con:  wtvb01-logger ports
+[[sensors]]
+name = "rotor-izq"
+transport = "serial"
+port = "/dev/ttyUSB0"
+
+# Sensor por Bluetooth. Averiguar la dirección con:  wtvb01-logger ble-scan
+[[sensors]]
+name = "rotor-der"
+transport = "ble"
+address = "AA:BB:CC:DD:EE:FF"
+
+# Ejemplo de captura de forma de onda de desplazamiento, con la tasa de
+# escritura limitada para no llenar la tarjeta.
+[[sensors]]
+name = "mastil"
+transport = "ble"
+address = "11:22:33:44:55:66"
+mode = "high_speed"
+poll_interval = 0.02      # 50 Hz; el sensor no responde fiablemente por encima
+max_rate_hz = 50
+enabled = false

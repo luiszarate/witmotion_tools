@@ -1,0 +1,18 @@
+# Entornos virtuales y artefactos de Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Cobertura y pruebas
+.coverage
+htmlcov/
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Datos registrados: no van al repositorio
+*.csv

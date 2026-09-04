@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wtvb01"
+version = "0.2.0"
+description = "Protocol, acquisition and logging core for the WitMotion WTVB01-BT50 vibration sensor"
+requires-python = ">=3.10"
+dependencies = ["pyserial>=3.5"]
+
+[project.optional-dependencies]
+ble = ["bleak>=0.22"]
+
+[tool.setuptools.packages.find]
+include = ["wtvb01*"]

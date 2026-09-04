@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WTVB01-BT50 · Monitor</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="dot" id="statusDot"></span>
+      <h1>WTVB01-BT50</h1>
+      <span class="sub" id="statusText">Desconectado</span>
+    </div>
+    <div class="controls">
+      <select id="portSelect" title="Puerto serial"></select>
+      <button id="refreshPorts" class="ghost" title="Buscar puertos">⟳</button>
+      <button id="connectBtn" class="primary">Conectar</button>
+      <label class="field">
+        Modo
+        <select id="modeSelect" title="Modo de captura"></select>
+      </label>
+      <label class="field" id="pollField">
+        Sondeo
+        <input id="pollRate" type="number" min="1" max="100" step="1" title="Lecturas de registro por segundo">
+        <span class="suffix">Hz</span>
+      </label>
+      <button id="recordBtn" class="record" disabled>● Grabar</button>
+      <label class="window">
+        Ventana
+        <select id="windowSelect">
+          <option value="10">10 s</option>
+          <option value="30" selected>30 s</option>
+          <option value="60">60 s</option>
+          <option value="180">3 min</option>
+        </select>
+      </label>
+      <button id="pauseBtn" class="ghost" title="Pausar gráficas">❚❚</button>
+    </div>
+  </header>
+
+  <p class="notice" id="notice" hidden></p>
+  <p class="modeHint" id="modeHint"></p>
+
+  <section class="tiles" id="tiles"></section>
+
+  <section class="charts">
+    <figure class="chart" data-group="velocity">
+      <figcaption>Velocidad de vibración <span class="unit">mm/s</span><span class="legend"></span></figcaption>
+      <canvas></canvas>
+    </figure>
+    <figure class="chart" data-group="displacement">
+      <figcaption>Desplazamiento <span class="unit">µm</span><span class="legend"></span></figcaption>
+      <canvas></canvas>
+    </figure>
+    <figure class="chart" data-group="fast_disp">
+      <figcaption>Desplazamiento alta velocidad <span class="unit">µm</span><span class="legend"></span></figcaption>
+      <canvas></canvas>
+    </figure>
+    <figure class="chart" data-group="frequency">
+      <figcaption>Frecuencia <span class="unit">Hz</span><span class="legend"></span></figcaption>
+      <canvas></canvas>
+    </figure>
+    <figure class="chart" data-group="accel">
+      <figcaption>Aceleración <span class="unit">g</span><span class="legend"></span></figcaption>
+      <canvas></canvas>
+    </figure>
+    <figure class="chart" data-group="angle">
+      <figcaption>Amplitud angular <span class="unit">°</span><span class="legend"></span></figcaption>
+      <canvas></canvas>
+    </figure>
+    <figure class="chart" data-group="gyro">
+      <figcaption>Giro <span class="unit">°/s</span><span class="legend"></span></figcaption>
+      <canvas></canvas>
+    </figure>
+  </section>
+
+  <details class="panel" id="configPanel">
+    <summary>Configuración del sensor</summary>
+    <div class="panelBody">
+      <p class="warn">
+        Estos ajustes se escriben en el sensor y quedan guardados
+        (desbloqueo + escritura + guardar). Se pide confirmación en cada uno.
+      </p>
+      <div class="settings" id="settings"></div>
+    </div>
+  </details>
+
+  <details class="panel raw">
+    <summary>Registros en crudo</summary>
+    <table id="rawTable"><tbody></tbody></table>
+  </details>
+
+  <footer class="bar foot">
+    <span id="footStats">—</span>
+    <span id="recordStats"></span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

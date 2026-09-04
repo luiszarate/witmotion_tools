@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Install the WTVB01-BT50 logger as a systemd service on Raspberry Pi OS.
+#
+#   sudo ./install.sh
+#
+# Idempotent: safe to re-run to upgrade. An existing
+# /etc/wtvb01-logger/config.toml is never overwritten.
+set -euo pipefail
+
+PREFIX=/opt/wtvb01-logger
+CONFIG_DIR=/etc/wtvb01-logger
+SERVICE_USER=wtvb01
+UNIT=wtvb01-logger.service
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo="$(cd "$here/.." && pwd)"
+
+[[ $EUID -eq 0 ]] || { echo "run with sudo" >&2; exit 1; }
+
+echo "==> paquetes del sistema"
+apt-get update -qq
+apt-get install -y -qq python3-venv python3-dev bluez
+
+echo "==> usuario de servicio: $SERVICE_USER"
+id -u "$SERVICE_USER" &>/dev/null || useradd --system --no-create-home --shell /usr/sbin/nologin "$SERVICE_USER"
+usermod -aG dialout,bluetooth "$SERVICE_USER"
+
+echo "==> código en $PREFIX"
+mkdir -p "$PREFIX"
+cp -r "$repo/core" "$repo/pi" "$PREFIX/"
+[[ -f "$repo/pi/README.md" ]] && cp "$repo/pi/README.md" "$PREFIX/README.md"
+
+echo "==> entorno virtual"
+python3 -m venv "$PREFIX/venv"
+"$PREFIX/venv/bin/pip" install --quiet --upgrade pip
+"$PREFIX/venv/bin/pip" install --quiet "$PREFIX/core[ble]" "$PREFIX/pi"
+
+echo "==> configuración en $CONFIG_DIR"
+mkdir -p "$CONFIG_DIR"
+if [[ -f "$CONFIG_DIR/config.toml" ]]; then
+  echo "    config.toml ya existe, se conserva"
+  cp "$repo/pi/config.example.toml" "$CONFIG_DIR/config.example.toml"
+else
+  cp "$repo/pi/config.example.toml" "$CONFIG_DIR/config.toml"
+  echo "    creado desde el ejemplo — EDÍTALO antes de arrancar"
+fi
+chown -R root:"$SERVICE_USER" "$CONFIG_DIR"
+chmod 750 "$CONFIG_DIR"
+
+echo "==> servicio systemd (instalado, SIN autoarranque)"
+install -m 644 "$repo/pi/systemd/$UNIT" "/etc/systemd/system/$UNIT"
+systemctl daemon-reload
+# Deliberately not enabled: the operator decides when the logger runs. See
+# the note printed at the end for how to turn autostart on later.
+
+echo "==> enlace del comando"
+ln -sf "$PREFIX/venv/bin/wtvb01-logger" /usr/local/bin/wtvb01-logger
+
+# So the admin can run control commands without sudo.
+admin="${SUDO_USER:-}"
+if [[ -n "$admin" ]] && ! id -nG "$admin" | grep -qw "$SERVICE_USER"; then
+  usermod -aG "$SERVICE_USER" "$admin"
+  echo "    '$admin' añadido al grupo $SERVICE_USER (vuelve a iniciar sesión para que aplique)"
+fi
+
+cat <<'NEXT'
+
+Instalado. El servicio NO arranca solo y NO se conecta solo a los sensores.
+
+Siguientes pasos:
+
+  1. sudoedit /etc/wtvb01-logger/config.toml
+  2. wtvb01-logger -c /etc/wtvb01-logger/config.toml validate
+  3. sudo systemctl start wtvb01-logger    # levanta el servicio, inactivo
+  4. wtvb01-logger connect                 # ahora sí toma los sensores
+  5. wtvb01-logger status
+
+Para soltar los sensores sin parar el servicio:
+  wtvb01-logger disconnect
+
+Para descubrir sensores:
+  wtvb01-logger ports        # por cable
+  wtvb01-logger ble-scan     # por Bluetooth
+
+Si más adelante quieres que arranque y grabe solo al encender la Raspberry:
+  sudo systemctl enable wtvb01-logger
+  y pon connect_on_start = true en /etc/wtvb01-logger/config.toml
+NEXT

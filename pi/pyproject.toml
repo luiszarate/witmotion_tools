@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wtvb01-logger"
+version = "0.1.0"
+description = "Unattended CSV data logger for WitMotion WTVB01-BT50 sensors, for Raspberry Pi"
+requires-python = ">=3.11"
+dependencies = ["wtvb01>=0.2"]
+
+[project.optional-dependencies]
+ble = ["wtvb01[ble]"]
+
+[project.scripts]
+wtvb01-logger = "wtvb01_logger.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["wtvb01_logger*"]

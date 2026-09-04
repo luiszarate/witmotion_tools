@@ -1,0 +1,46 @@
+[Unit]
+Description=WTVB01-BT50 vibration data logger
+Documentation=file:/opt/wtvb01-logger/README.md
+# BLE sensors need BlueZ up; serial-only setups are unaffected by this.
+After=bluetooth.target network.target
+Wants=bluetooth.target
+# A logger that fails repeatedly should keep trying: a sensor may simply not
+# be powered yet. This belongs in [Unit], not [Service].
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=wtvb01
+Group=wtvb01
+# dialout for /dev/ttyUSB*, bluetooth for the BlueZ D-Bus policy.
+SupplementaryGroups=dialout bluetooth
+
+# Raspberry Pi OS ships the Bluetooth adapter soft-blocked by rfkill, which
+# makes every BLE sensor silently unreachable after a reboot. '+' runs as
+# root, '-' tolerates the command being absent on serial-only installs.
+ExecStartPre=-+/usr/sbin/rfkill unblock bluetooth
+ExecStart=/opt/wtvb01-logger/venv/bin/wtvb01-logger --config /etc/wtvb01-logger/config.toml run
+# SIGHUP rolls every open file, so 'systemctl reload' segments a recording.
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Creates /run/wtvb01-logger (control socket) and /var/lib/wtvb01-logger (CSV),
+# both owned by the service user.
+RuntimeDirectory=wtvb01-logger
+RuntimeDirectoryMode=0750
+StateDirectory=wtvb01-logger
+StateDirectoryMode=0755
+
+Restart=always
+RestartSec=5
+
+# Give the service time to flush and close its CSV files.
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
