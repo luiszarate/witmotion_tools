@@ -55,6 +55,30 @@ systemctl daemon-reload
 echo "==> enlace del comando"
 ln -sf "$PREFIX/venv/bin/wtvb01-logger" /usr/local/bin/wtvb01-logger
 
+# A config preserved from an older install can point the service somewhere the
+# CLI no longer looks. Checking it here beats debugging "no service listening".
+echo "==> comprobando la configuración como el usuario del servicio"
+if ! sudo -u "$SERVICE_USER" "$PREFIX/venv/bin/wtvb01-logger" \
+       -c "$CONFIG_DIR/config.toml" validate; then
+  echo
+  echo "  AVISO: el servicio NO podrá arrancar con esta configuración."
+  echo "         Corrígela con: sudoedit $CONFIG_DIR/config.toml"
+  echo
+fi
+
+socket_in_config="$(grep -oP '(?<=^control_socket = ")[^"]+' "$CONFIG_DIR/config.toml" 2>/dev/null || true)"
+if [[ -n "$socket_in_config" && "$socket_in_config" != /run/wtvb01-logger/* ]]; then
+  cat <<WARN
+
+  AVISO: tu configuración usa control_socket = "$socket_in_config".
+         La unidad de systemd crea /run/wtvb01-logger/ (RuntimeDirectory), así
+         que el socket debe estar dentro de ese directorio o el servicio no
+         podrá crearlo. Recomendado:
+             control_socket = "/run/wtvb01-logger/control.sock"
+
+WARN
+fi
+
 # So the admin can run control commands without sudo.
 admin="${SUDO_USER:-}"
 if [[ -n "$admin" ]] && ! id -nG "$admin" | grep -qw "$SERVICE_USER"; then

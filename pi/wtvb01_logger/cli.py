@@ -18,6 +18,17 @@ from .service import LoggerService
 
 CONTROL_COMMANDS = ("status", "roll", "pause", "resume", "connect", "disconnect", "stop", "ping")
 
+#: What to check when the control socket cannot be reached.
+_CONTROL_HINTS = """
+Comprobaciones:
+  systemctl is-active wtvb01-logger         # ¿está corriendo?
+  sudo journalctl -u wtvb01-logger -n 40    # por qué murió, si murió
+  sudo ls -l /run/wtvb01-logger/            # ¿dónde está el socket de verdad?
+  grep control_socket /etc/wtvb01-logger/config.toml
+Si acabas de instalar, cierra sesión y vuelve a entrar: la pertenencia al
+grupo wtvb01 no aplica hasta entonces.
+""".rstrip()
+
 #: What usually goes wrong with BLE on a fresh Raspberry Pi, in the order it
 #: is worth checking. The adapter ships soft-blocked on some images.
 _BLE_HINTS = """
@@ -61,12 +72,25 @@ def _load(args: argparse.Namespace) -> config_module.LoggerConfig:
 
 
 def _socket_path(args: argparse.Namespace) -> Path:
+    """Where to reach the running service.
+
+    Controlling a service should not require a readable config, so an
+    unreadable one falls back to the default path - but says so. Guessing
+    silently turns "I cannot read your config" into the far more confusing
+    "no service listening", which is a different problem entirely.
+    """
     if getattr(args, "socket", None):
         return Path(args.socket)
     try:
         return _load(args).control_socket
-    except config_module.ConfigError:
-        # Controlling a running service should not require a readable config.
+    except config_module.ConfigError as exc:
+        print(
+            f"aviso: no se pudo leer {args.config} ({exc}).\n"
+            f"       Uso la ruta por defecto {config_module.DEFAULT_CONTROL_SOCKET}, que puede no\n"
+            f"       ser la que usa el servicio. Si acabas de instalar, cierra sesión y vuelve a\n"
+            f"       entrar para que aplique tu pertenencia al grupo wtvb01.",
+            file=sys.stderr,
+        )
         return config_module.DEFAULT_CONTROL_SOCKET
 
 
@@ -175,6 +199,7 @@ def cmd_control(args: argparse.Namespace) -> int:
         reply = request(_socket_path(args), payload)
     except ControlError as exc:
         print(f"error: {exc}", file=sys.stderr)
+        print(_CONTROL_HINTS, file=sys.stderr)
         return 2
     if args.json or not reply.get("ok"):
         print(json.dumps(reply, indent=2, ensure_ascii=False))
